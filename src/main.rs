@@ -1,6 +1,5 @@
-use axum::extract::rejection::JsonRejection;
 use axum::extract::{FromRequest, Request};
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::StatusCode;
 use axum::{Json, Router};
 use axum::routing::{delete, get, post, put};
 use serde::{Deserialize, Serialize};
@@ -46,6 +45,16 @@ struct ResponseBody<T> {
     links: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct RequestBody<T> {
+    data: T,
+}
+
+// struct Links {
+//     this: String,
+//     next: Option<String>,
+// }
+
 #[derive(Debug, Deserialize, Serialize)]
 struct User {
     id: u8,
@@ -58,47 +67,46 @@ where
 {
     type Rejection = (StatusCode, Json<Value>);
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        match Json::<User>::from_request(req, state).await {
-            Ok(value) => {
-                dbg!(&value);
-                Ok(value.0)
-            },
+        match Json::<RequestBody<User>>::from_request(req, state).await {
+            Ok(value) => Ok(value.0.data),
             Err(err) => {
-                dbg!(&err);
-                let res = serde_json::json!({ "status": err.status().as_u16(), "body_text": err.body_text() });
+                let res = serde_json::json!({
+                    "errors": [{
+                        "status": err.status().as_str(),
+                        "detail": err.body_text(),
+                    }],
+                });
                 Err((StatusCode::BAD_REQUEST, Json(res)))
             },
         }
     }
 }
 
-async fn create_user(body: Result<Json<Value>, JsonRejection>) -> (StatusCode, Json<Value>) {
-    match body {
-        Ok(_) => {
-            let res = serde_json::json!({ "data": 42 });
-            (StatusCode::ACCEPTED, Json(res))
-        }
-        Err(_) => {
-            let res = serde_json::json!({ "error": 21 });
-            (StatusCode::BAD_REQUEST, Json(res))
-        }
-    }
-}
-
-async fn select_user() -> (StatusCode, Json<Value>) {
-    let res = serde_json::json!({ "data": 42 });
-    (StatusCode::OK, Json(res))
-}
-
-async fn update_user(_user: User) -> (StatusCode, Json<ResponseBody<User>>) {
-    dbg!(&_user);
-    let user = User { id: 0, name: "foo".to_string() };
+async fn create_user(user: User) -> (StatusCode, Json<ResponseBody<User>>) {
+    // create
     let res = ResponseBody { data: user, links: "links".to_string() };
     (StatusCode::ACCEPTED, Json(res))
 }
 
-async fn delete_user() -> (StatusCode, Json<Value>) {
-    let res = serde_json::json!({ "data": 42 });
+async fn select_user() -> (StatusCode, Json<ResponseBody<Vec<User>>>) {
+    // select
+    let users = vec![
+        User { id: 0, name: "foo".to_string() },
+        User { id: 2, name: "bar".to_string() },
+    ];
+    let res = ResponseBody { data: users, links: "links".to_string() };
+    (StatusCode::OK, Json(res))
+}
+
+async fn update_user(user: User) -> (StatusCode, Json<ResponseBody<User>>) {
+    // update
+    let res = ResponseBody { data: user, links: "links".to_string() };
+    (StatusCode::ACCEPTED, Json(res))
+}
+
+async fn delete_user(user: User) -> (StatusCode, Json<ResponseBody<User>>) {
+    // delete
+    let res = ResponseBody { data: user, links: "links".to_string() };
     (StatusCode::ACCEPTED, Json(res))
 }
 
