@@ -1,7 +1,7 @@
 + scaffolding
 + endpoints routing
-- serialization & validation
-- error handling
+~ error handling
+~ serialization & validation
 - database
 - migrations
 - openapi generator
