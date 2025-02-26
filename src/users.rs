@@ -18,8 +18,7 @@ use crate::common::{ApiError, RequestBody, ResponseBody};
 
 type UserResponse = (StatusCode, Json<ResponseBody<User>>);
 
-#[derive(Clone, Debug, Deserialize, Dummy, Insertable, Serialize, Queryable, Selectable, ToSchema)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
+#[derive(Deserialize, Dummy, Insertable, Serialize, Queryable, Selectable, ToSchema)]
 pub struct User {
     #[dummy(faker = "0..")]
     id: i32,

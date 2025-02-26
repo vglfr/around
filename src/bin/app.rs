@@ -23,10 +23,14 @@ async fn main() {
         .route("/", delete(users::delete_user));
 
     let events = Router::new()
-        .route("/", post(events::create_events))
-        .route("/", get(events::select_events))
-        .route("/", put(events::update_events))
-        .route("/", delete(events::delete_events));
+        .route("/", post(events::create_event))
+        .route("/x", post(events::create_events))
+        .route("/", get(events::select_event))
+        .route("/x", get(events::select_events))
+        .route("/", put(events::update_event))
+        .route("/x", put(events::update_events))
+        .route("/", delete(events::delete_event))
+        .route("/x", delete(events::delete_events));
 
     let openapi = Router::new()
         .route("/", get(openapi::openapi));

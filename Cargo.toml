@@ -11,9 +11,10 @@ name = "synth"
 
 [dependencies]
 axum = "0.8.1"
+chrono = "0.4.40"
 deadpool-diesel = { version = "0.6.1", features = ["postgres"] }
-diesel = { version = "2.2.7", features = ["postgres"] }
-fake = { version = "4.0.0", features = ["derive"] }
+diesel = { version = "2.2.7", features = ["chrono", "postgres"] }
+fake = { version = "4.0.0", features = ["chrono", "derive"] }
 serde = { version = "1.0.218", features = ["derive"] }
 serde_json = "1.0.139"
 tokio = "1.43.0"

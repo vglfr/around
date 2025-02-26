@@ -14,3 +14,7 @@ Storage:
 
 Framework:
 - axum because never worked with it
+
+### Failures
+
+- enum as a field in Diesel
