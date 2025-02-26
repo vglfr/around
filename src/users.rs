@@ -1,91 +1,16 @@
-// use std::any::Any;
-// use std::error::Error;
-
 use axum::extract::{FromRequest, Request, State};
 use axum::http::StatusCode;
-use axum::{Json, Router};
-use axum::routing::{delete, get, post, put};
-use deadpool_diesel::postgres::{Manager, Pool};
-use deadpool_diesel::Runtime;
+use axum::Json;
+use deadpool_diesel::postgres::Pool;
 use diesel::{ExpressionMethods, Insertable, QueryDsl, Queryable, RunQueryDsl, Selectable, SelectableHelper};
-// use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use tokio::net::TcpListener;
-use tower_http::trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer};
-use tracing::Level;
-
-pub mod schema;
 
 use crate::schema::users;
-
-#[tokio::main(flavor = "current_thread")]
-async fn main() {
-    tracing_subscriber::fmt().with_target(false).compact().init();
-
-    let url = std::env::var("DATABASE_URL").unwrap();
-    let manager = Manager::new(url, Runtime::Tokio1);
-    let pool = Pool::builder(manager).build().unwrap();
-
-    let users = Router::new()
-        .route("/", post(create_user))
-        .route("/", get(select_user))
-        .route("/", put(update_user))
-        .route("/", delete(delete_user));
-
-    let events = Router::new()
-        .route("/", post(create_events))
-        .route("/", get(select_events))
-        .route("/", put(update_events))
-        .route("/", delete(delete_events));
-
-    let app = Router::new()
-        .nest("/v0/events", events)
-        .nest("/v0/users", users)
-        .fallback(error_routing)
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
-                .on_request(DefaultOnRequest::new().level(Level::INFO))
-                .on_response(DefaultOnResponse::new().level(Level::INFO))
-        )
-        .with_state(pool);
-
-    let listener = TcpListener::bind("0.0.0.0:8080").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
-}
-
-#[derive(Serialize)]
-#[serde(untagged)]
-enum ResponseBody<T> {
-    ResponseOk {
-        data: T,
-        links: String,
-    },
-    ResponseErr {
-        errors: Vec<ApiError>,
-    },
-}
-
-#[derive(Debug, Deserialize)]
-struct RequestBody<T> {
-    data: T,
-}
-
-#[derive(Serialize)]
-struct ApiError {
-    status: String,
-    detail: String,
-}
-
-// struct Links {
-//     this: String,
-//     next: Option<String>,
-// }
+use crate::common::{ApiError, RequestBody, ResponseBody};
 
 #[derive(Clone, Debug, Deserialize, Insertable, Serialize, Queryable, Selectable)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-struct User {
+pub struct User {
     id: i32,
     name: String,
 }
@@ -109,7 +34,7 @@ where
     }
 }
 
-async fn create_user(pool: State<Pool>, user: User) -> (StatusCode, Json<ResponseBody<User>>) {
+pub async fn create_user(pool: State<Pool>, user: User) -> (StatusCode, Json<ResponseBody<User>>) {
     let connection = pool.get().await.unwrap();
 
     let command = connection.interact(|cursor| {
@@ -133,7 +58,7 @@ async fn create_user(pool: State<Pool>, user: User) -> (StatusCode, Json<Respons
     }
 }
 
-async fn select_user(pool: State<Pool>) -> (StatusCode, Json<ResponseBody<Vec<User>>>) {
+pub async fn select_user(pool: State<Pool>) -> (StatusCode, Json<ResponseBody<Vec<User>>>) {
     let connection = pool.get().await.unwrap();
 
     let data = connection.interact(|cursor|
@@ -147,7 +72,7 @@ async fn select_user(pool: State<Pool>) -> (StatusCode, Json<ResponseBody<Vec<Us
     (StatusCode::OK, Json(res))
 }
 
-async fn update_user(pool: State<Pool>, user: User) -> (StatusCode, Json<ResponseBody<User>>) {
+pub async fn update_user(pool: State<Pool>, user: User) -> (StatusCode, Json<ResponseBody<User>>) {
     let connection = pool.get().await.unwrap();
 
     let command = connection.interact(move |cursor| {
@@ -173,7 +98,7 @@ async fn update_user(pool: State<Pool>, user: User) -> (StatusCode, Json<Respons
     }
 }
 
-async fn delete_user(pool: State<Pool>, user: User) -> (StatusCode, Json<ResponseBody<User>>) {
+pub async fn delete_user(pool: State<Pool>, user: User) -> (StatusCode, Json<ResponseBody<User>>) {
     let connection = pool.get().await.unwrap();
     let data = user.clone();
 
@@ -195,29 +120,4 @@ async fn delete_user(pool: State<Pool>, user: User) -> (StatusCode, Json<Respons
             (StatusCode::BAD_REQUEST, Json(res))
         }
     }
-}
-
-async fn create_events() -> (StatusCode, Json<Value>) {
-    let res = serde_json::json!({ "data": 42 });
-    (StatusCode::ACCEPTED, Json(res))
-}
-
-async fn select_events() -> (StatusCode, Json<Value>) {
-    let res = serde_json::json!({ "data": 42 });
-    (StatusCode::OK, Json(res))
-}
-
-async fn update_events() -> (StatusCode, Json<Value>) {
-    let res = serde_json::json!({ "data": 42 });
-    (StatusCode::ACCEPTED, Json(res))
-}
-
-async fn delete_events() -> (StatusCode, Json<Value>) {
-    let res = serde_json::json!({ "data": 42 });
-    (StatusCode::ACCEPTED, Json(res))
-}
-
-async fn error_routing() -> (StatusCode, Json<Value>) {
-    let res = serde_json::json!({ "error": 1 });
-    (StatusCode::NOT_FOUND, Json(res))
 }

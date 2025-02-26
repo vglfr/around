@@ -5,11 +5,16 @@
 + database
 + migrations
 + hook dababase into axum
+- rescaffold
+- auth
+- synthetic data
+- tests
+- openapi generator
+- openapi ui
+- docker
+- docker-compose
+- deploy
 - pagination
 - filtering
-- openapi generator
 - realistic entity
 - second entity
-- docker
-- openapi ui
-- docker-compose
