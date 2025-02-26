@@ -5,9 +5,9 @@
 + database
 + migrations
 + hook dababase into axum
-- rescaffold
-- auth
-- synthetic data
++ rescaffold
++ synthetic data
++ realistic entity
 - tests
 - openapi generator
 - openapi ui
@@ -16,5 +16,5 @@
 - deploy
 - pagination
 - filtering
-- realistic entity
 - second entity
+? auth
