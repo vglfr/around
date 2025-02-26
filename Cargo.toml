@@ -11,7 +11,7 @@ name = "synth"
 
 [dependencies]
 axum = "0.8.1"
-chrono = "0.4.40"
+chrono = { version = "0.4.40", features = ["serde"] }
 deadpool-diesel = { version = "0.6.1", features = ["postgres"] }
 diesel = { version = "2.2.7", features = ["chrono", "postgres"] }
 fake = { version = "4.0.0", features = ["chrono", "derive"] }
@@ -21,4 +21,4 @@ tokio = "1.43.0"
 tower-http = { version = "0.6.2", features = ["trace"] }
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
-utoipa = "5.3.1"
+utoipa = { version = "5.3.1", features = ["chrono"] }

@@ -10,12 +10,12 @@
 + realistic entity
 + docker
 + openapi generator
-~ docker-compose
-~ second entity
++ second entity
 - query parameters
 - path parameters
 - pagination
 - filtering
+~ docker-compose
 - tests
 - deploy
 ? auth

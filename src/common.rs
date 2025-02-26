@@ -1,7 +1,6 @@
 use axum::http::StatusCode;
 use axum::Json;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use utoipa::ToSchema;
 
 #[derive(Serialize, ToSchema)]
@@ -32,7 +31,10 @@ pub struct ApiError {
 //     next: Option<String>,
 // }
 
-pub async fn error_routing() -> (StatusCode, Json<Value>) {
-    let res = serde_json::json!({ "error": 1 });
+pub async fn error_routing() -> (StatusCode, Json<ResponseBody<()>>) {
+    let errors = vec![
+        ApiError { status: "404".to_string(), detail: "path not found".to_string() }
+    ];
+    let res = ResponseBody::ResponseErr { errors };
     (StatusCode::NOT_FOUND, Json(res))
 }
