@@ -11,10 +11,10 @@
 + docker
 + openapi generator
 + second entity
-- query parameters
-- path parameters
-- pagination
-- filtering
++ query parameters
++ path parameters
++ pagination
++ filtering
 ~ docker-compose
 - tests
 - deploy

@@ -6,6 +6,10 @@ use crate::{events, users};
 #[derive(OpenApi)]
 #[openapi(paths(
     openapi,
+    events::create_events,
+    events::select_events,
+    events::update_events,
+    events::delete_events,
     users::create_user,
     users::select_user,
     users::update_user,

@@ -20,7 +20,7 @@ async fn main() {
         .route("/", post(users::create_user))
         .route("/{user_id}", get(users::select_user))
         .route("/", put(users::update_user))
-        .route("/", delete(users::delete_user));
+        .route("/{user_id}", delete(users::delete_user));
 
     let events = Router::new()
         .route("/", post(events::create_events))

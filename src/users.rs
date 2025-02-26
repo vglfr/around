@@ -7,7 +7,7 @@ use axum::Json;
 use deadpool_diesel::postgres::Pool;
 use deadpool_diesel::InteractError;
 use diesel::result::Error;
-use diesel::{ExpressionMethods, Identifiable, Insertable, QueryDsl, Queryable, RunQueryDsl, Selectable, SelectableHelper};
+use diesel::{AsChangeset, Identifiable, Insertable, QueryDsl, Queryable, RunQueryDsl, Selectable, SelectableHelper};
 use fake::Dummy;
 use fake::faker::name::en::Name;
 use fake::faker::company::en::CompanyName;
@@ -19,7 +19,7 @@ use crate::common::{ApiError, RequestBody, ResponseBody};
 
 type UserResponse = (StatusCode, Json<ResponseBody<User>>);
 
-#[derive(Deserialize, Dummy, Identifiable, Insertable, Queryable, Selectable, Serialize, ToSchema)]
+#[derive(AsChangeset, Deserialize, Dummy, Identifiable, Insertable, Queryable, Selectable, Serialize, ToSchema)]
 #[diesel(primary_key(id))]
 pub struct User {
     #[dummy(faker = "0..")]
@@ -79,68 +79,60 @@ where
 pub async fn create_user(pool: State<Pool>, user: User) -> UserResponse {
     let connection = pool.get().await.unwrap();
 
-    let data = connection.interact(|cursor| {
+    let result = connection.interact(|cursor| {
         diesel::insert_into(dsl::users)
             .values(user)
+            .on_conflict_do_nothing()
             .get_result::<User>(cursor)
     });
 
-    handle_result(data).await
+    handle_result(result).await
 }
 
 #[utoipa::path(get, path = "/v0/user/{user_id}", responses((status = 200, body = ResponseBody<User>)))]
 pub async fn select_user(user_id: UserId, pool: State<Pool>) -> UserResponse {
     let connection = pool.get().await.unwrap();
 
-    let data = connection.interact(move |cursor|
+    let result = connection.interact(move |cursor|
         dsl::users
             .find(user_id.0)
             .select(User::as_select())
             .get_result(cursor)
-            // .unwrap()
     );
 
-    // let res = ResponseBody::ResponseOk { data, links: "links".to_string() };
-    // (StatusCode::OK, Json(res))
-    handle_result(data).await
+    handle_result(result).await
 }
 
 #[utoipa::path(put, path = "/v0/user", responses((status = 202, body = ResponseBody<User>)))]
 pub async fn update_user(pool: State<Pool>, user: User) -> UserResponse {
     let connection = pool.get().await.unwrap();
 
-    let data = connection.interact(move |cursor| {
-        diesel::update(dsl::users.find(user.id))
-            .set((
-                dsl::name.eq(user.name),
-                dsl::fingerprint.eq(user.fingerprint),
-                dsl::timezone_offset.eq(user.timezone_offset),
-                dsl::favorite_team.eq(user.favorite_team),
-                dsl::dark_mode.eq(user.dark_mode),
-            ))
+    let result = connection.interact(move |cursor| {
+        diesel::update(users::table)
+            .set(&user)
             .get_result::<User>(cursor)
     });
 
-    handle_result(data).await
+    handle_result(result).await
 }
 
-#[utoipa::path(delete, path = "/v0/user", responses((status = 202, body = ResponseBody<User>)))]
-pub async fn delete_user(pool: State<Pool>, user: User) -> UserResponse {
+#[utoipa::path(delete, path = "/v0/user/{user_id}", responses((status = 202, body = ResponseBody<User>)))]
+pub async fn delete_user(user_id: UserId, pool: State<Pool>) -> UserResponse {
     let connection = pool.get().await.unwrap();
 
-    let data = connection.interact(move |cursor| {
-        diesel::delete(dsl::users.find(user.id))
+    let result = connection.interact(move |cursor| {
+        diesel::delete(dsl::users.find(user_id.0))
             .get_result::<User>(cursor)
     });
 
-    handle_result(data).await
+    handle_result(result).await
 }
 
-async fn handle_result<T>(command: T) -> UserResponse
+async fn handle_result<T>(result: T) -> UserResponse
 where
     T: Future<Output = Result<Result<User, Error>, InteractError>>,
 {
-    match command.await.unwrap() {
+    match result.await.unwrap() {
         Ok(data) => {
             let res = ResponseBody::ResponseOk { data, links: "links".to_string() };
             (StatusCode::ACCEPTED, Json(res))
