@@ -11,13 +11,14 @@ use fake::Dummy;
 use fake::faker::name::en::Name;
 use fake::faker::company::en::CompanyName;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use crate::schema::users::{self, dsl};
 use crate::common::{ApiError, RequestBody, ResponseBody};
 
 type UserResponse = (StatusCode, Json<ResponseBody<User>>);
 
-#[derive(Clone, Debug, Deserialize, Dummy, Insertable, Serialize, Queryable, Selectable)]
+#[derive(Clone, Debug, Deserialize, Dummy, Insertable, Serialize, Queryable, Selectable, ToSchema)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct User {
     #[dummy(faker = "0..")]
@@ -52,6 +53,7 @@ where
     }
 }
 
+#[utoipa::path(post, path = "/v0/user", responses((status = 202, body = ResponseBody<User>)))]
 pub async fn create_user(pool: State<Pool>, user: User) -> UserResponse {
     let connection = pool.get().await.unwrap();
 
@@ -64,6 +66,7 @@ pub async fn create_user(pool: State<Pool>, user: User) -> UserResponse {
     handle_result(command).await
 }
 
+#[utoipa::path(get, path = "/v0/user", responses((status = 200, body = ResponseBody<Vec<User>>)))]
 pub async fn select_user(pool: State<Pool>) -> (StatusCode, Json<ResponseBody<Vec<User>>>) {
     let connection = pool.get().await.unwrap();
 
@@ -78,6 +81,7 @@ pub async fn select_user(pool: State<Pool>) -> (StatusCode, Json<ResponseBody<Ve
     (StatusCode::OK, Json(res))
 }
 
+#[utoipa::path(put, path = "/v0/user", responses((status = 202, body = ResponseBody<User>)))]
 pub async fn update_user(pool: State<Pool>, user: User) -> UserResponse {
     let connection = pool.get().await.unwrap();
 
@@ -96,6 +100,7 @@ pub async fn update_user(pool: State<Pool>, user: User) -> UserResponse {
     handle_result(command).await
 }
 
+#[utoipa::path(delete, path = "/v0/user", responses((status = 202, body = ResponseBody<User>)))]
 pub async fn delete_user(pool: State<Pool>, user: User) -> UserResponse {
     let connection = pool.get().await.unwrap();
 

@@ -8,13 +8,15 @@
 + rescaffold
 + synthetic data
 + realistic entity
-- tests
-- openapi generator
-- openapi ui
-- docker
-- docker-compose
-- deploy
++ docker
++ openapi generator
+~ docker-compose
+~ second entity
+- query parameters
+- path parameters
 - pagination
 - filtering
-- second entity
+- tests
+- deploy
 ? auth
+- openapi ui

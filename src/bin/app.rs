@@ -6,7 +6,7 @@ use tokio::net::TcpListener;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer};
 use tracing::Level;
 
-use around::{common, events, users};
+use around::{common, events, openapi, users};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -28,9 +28,13 @@ async fn main() {
         .route("/", put(events::update_events))
         .route("/", delete(events::delete_events));
 
+    let openapi = Router::new()
+        .route("/", get(openapi::openapi));
+
     let app = Router::new()
         .nest("/v0/events", events)
         .nest("/v0/users", users)
+        .nest("/v0/docs", openapi)
         .fallback(common::error_routing)
         .layer(
             TraceLayer::new_for_http()
