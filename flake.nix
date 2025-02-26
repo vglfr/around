@@ -16,13 +16,11 @@
           packages = [
             pkgs.cargo
             pkgs.diesel-cli
+            pkgs.just
             pkgs.postgresql
             pkgs.rust-analyzer
             pkgs.rustc
           ];
-
-          shellHook = ''
-          '';
         };
     };
     in utils.lib.eachDefaultSystem mkShell;
