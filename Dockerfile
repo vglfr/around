@@ -6,6 +6,6 @@ RUN cargo install --path .
 
 # prod
 FROM debian:bookworm-slim AS runner
-RUN apt update && apt install libpq5 -y # ca-certificates && update-ca-certificates
-COPY --from=builder /usr/local/cargo/bin/app /usr/local/bin/app
-CMD ["app"]
+RUN apt update && apt install libpq5 -y
+COPY --from=builder /usr/local/cargo/bin/app /usr/local/cargo/bin/synth /usr/local/bin/
+CMD synth && app

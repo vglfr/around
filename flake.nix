@@ -9,7 +9,7 @@
           PGDATA = "/var/postgres/around";
           PGDATABASE = "postgres";
           PGHOST = "localhost";
-          PGPORT = "5432";
+          PGPORT = "54320";
 
           DATABASE_URL = "postgres://${PGHOST}:${PGPORT}/${PGDATABASE}";
 
