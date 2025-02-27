@@ -4,6 +4,7 @@ use deadpool_diesel::postgres::{Manager, Pool};
 use deadpool_diesel::Runtime;
 use tokio::net::TcpListener;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer};
+use tower_http::cors::CorsLayer;
 use tracing::Level;
 
 use around::{common, events, openapi, users};
@@ -36,6 +37,7 @@ async fn main() {
         .nest("/v0/users", users)
         .nest("/v0/docs", openapi)
         .fallback(common::error_routing)
+        .layer(CorsLayer::permissive())
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
