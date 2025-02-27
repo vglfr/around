@@ -1,5 +1,7 @@
 .env
+terraform.tfstate
+terraform.tfstate.backup
 
 .direnv/
-
+.terraform/
 target/
