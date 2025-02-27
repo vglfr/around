@@ -8,14 +8,14 @@ use utoipa::ToSchema;
 pub enum ResponseBody<T> {
     ResponseOk {
         data: T,
-        links: String,
+        links: Links,
     },
     ResponseErr {
         errors: Vec<ApiError>,
     },
 }
 
-#[derive(Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Deserialize, Serialize, ToSchema)]
 pub struct RequestBody<T> {
     pub data: T,
 }
@@ -26,10 +26,12 @@ pub struct ApiError {
     pub detail: String,
 }
 
-// struct Links {
-//     this: String,
-//     next: Option<String>,
-// }
+#[derive(Serialize, ToSchema)]
+pub struct Links {
+    pub this: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next: Option<String>,
+}
 
 pub async fn error_routing() -> (StatusCode, Json<ResponseBody<()>>) {
     let errors = vec![

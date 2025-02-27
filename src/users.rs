@@ -1,6 +1,6 @@
 use std::future::Future;
 
-use axum::extract::{FromRequest, FromRequestParts, Path, Request, State};
+use axum::extract::{FromRequest, FromRequestParts, OriginalUri, Path, Request, State};
 use axum::http::request::Parts;
 use axum::http::StatusCode;
 use axum::Json;
@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::schema::users::{self, dsl};
-use crate::common::{ApiError, RequestBody, ResponseBody};
+use crate::common::{ApiError, Links, RequestBody, ResponseBody};
 
 type UserResponse = (StatusCode, Json<ResponseBody<User>>);
 
@@ -76,7 +76,7 @@ where
 }
 
 #[utoipa::path(post, path = "/v0/user", responses((status = 202, body = ResponseBody<User>)))]
-pub async fn create_user(pool: State<Pool>, user: User) -> UserResponse {
+pub async fn create_user(pool: State<Pool>, url: OriginalUri, user: User) -> UserResponse {
     let connection = pool.get().await.unwrap();
 
     let result = connection.interact(|cursor| {
@@ -86,11 +86,11 @@ pub async fn create_user(pool: State<Pool>, user: User) -> UserResponse {
             .get_result::<User>(cursor)
     });
 
-    handle_result(result).await
+    handle_result(result, url.0.to_string()).await
 }
 
 #[utoipa::path(get, path = "/v0/user/{user_id}", responses((status = 200, body = ResponseBody<User>)))]
-pub async fn select_user(user_id: UserId, pool: State<Pool>) -> UserResponse {
+pub async fn select_user(pool: State<Pool>, url: OriginalUri, user_id: UserId) -> UserResponse {
     let connection = pool.get().await.unwrap();
 
     let result = connection.interact(move |cursor|
@@ -100,11 +100,11 @@ pub async fn select_user(user_id: UserId, pool: State<Pool>) -> UserResponse {
             .get_result(cursor)
     );
 
-    handle_result(result).await
+    handle_result(result, url.0.to_string()).await
 }
 
 #[utoipa::path(put, path = "/v0/user", responses((status = 202, body = ResponseBody<User>)))]
-pub async fn update_user(pool: State<Pool>, user: User) -> UserResponse {
+pub async fn update_user(pool: State<Pool>, url: OriginalUri, user: User) -> UserResponse {
     let connection = pool.get().await.unwrap();
 
     let result = connection.interact(move |cursor| {
@@ -113,11 +113,11 @@ pub async fn update_user(pool: State<Pool>, user: User) -> UserResponse {
             .get_result::<User>(cursor)
     });
 
-    handle_result(result).await
+    handle_result(result, url.0.to_string()).await
 }
 
 #[utoipa::path(delete, path = "/v0/user/{user_id}", responses((status = 202, body = ResponseBody<User>)))]
-pub async fn delete_user(user_id: UserId, pool: State<Pool>) -> UserResponse {
+pub async fn delete_user(pool: State<Pool>, url: OriginalUri, user_id: UserId) -> UserResponse {
     let connection = pool.get().await.unwrap();
 
     let result = connection.interact(move |cursor| {
@@ -125,16 +125,16 @@ pub async fn delete_user(user_id: UserId, pool: State<Pool>) -> UserResponse {
             .get_result::<User>(cursor)
     });
 
-    handle_result(result).await
+    handle_result(result, url.0.to_string()).await
 }
 
-async fn handle_result<T>(result: T) -> UserResponse
+async fn handle_result<T>(result: T, this: String) -> UserResponse
 where
     T: Future<Output = Result<Result<User, Error>, InteractError>>,
 {
     match result.await.unwrap() {
         Ok(data) => {
-            let res = ResponseBody::ResponseOk { data, links: "links".to_string() };
+            let res = ResponseBody::ResponseOk { data, links: Links { this, next: None } };
             (StatusCode::ACCEPTED, Json(res))
         }
         Err(err) => {

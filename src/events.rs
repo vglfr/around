@@ -1,6 +1,6 @@
 use std::future::Future;
 
-use axum::extract::{FromRequest, FromRequestParts, Query, Request, State};
+use axum::extract::{FromRequest, FromRequestParts, OriginalUri, Query, Request, State};
 use axum::http::request::Parts;
 use axum::http::StatusCode;
 use axum::Json;
@@ -15,7 +15,7 @@ use fake::faker::company::en::Buzzword;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::common::{ApiError, RequestBody, ResponseBody};
+use crate::common::{ApiError, Links, RequestBody, ResponseBody};
 use crate::schema::events::{self, dsl};
 
 type EventsResponse = (StatusCode, Json<ResponseBody<Vec<Event>>>);
@@ -87,7 +87,7 @@ where
 }
 
 #[utoipa::path(post, path = "/v0/events", responses((status = 202, body = ResponseBody<Vec<Event>>)))]
-pub async fn create_events(pool: State<Pool>, events: Events) -> EventsResponse {
+pub async fn create_events(pool: State<Pool>, url: OriginalUri, events: Events) -> EventsResponse {
     let connection = pool.get().await.unwrap();
 
     let result = connection.interact(|cursor|
@@ -97,11 +97,11 @@ pub async fn create_events(pool: State<Pool>, events: Events) -> EventsResponse 
             .get_results::<Event>(cursor)
     );
 
-    handle_result(result).await
+    handle_result(result, url.0.to_string(), None).await
 }
 
 #[utoipa::path(get, path = "/v0/events", responses((status = 200, body = ResponseBody<Vec<Event>>)))]
-pub async fn select_events(query: EventQuery, pool: State<Pool>) -> EventsResponse {
+pub async fn select_events(query: EventQuery, url: OriginalUri, pool: State<Pool>) -> EventsResponse {
     let connection = pool.get().await.unwrap();
 
     let result = connection.interact(move |cursor|
@@ -114,11 +114,19 @@ pub async fn select_events(query: EventQuery, pool: State<Pool>) -> EventsRespon
             .load(cursor)
     );
 
-    handle_result(result).await
+    let next = format!(
+        "{}?start={}&limit={}&offset={}",
+        &url.0.to_string().split_once("?").map_or(url.0.to_string(), |x| x.0.to_string()),
+        query.start.map_or_else(|| Utc::now().to_rfc3339(), |x| DateTime::to_rfc3339(&x)),
+        query.limit.unwrap_or(32),
+        query.offset.unwrap_or(0) + query.limit.map_or(32, u16::from),
+    );
+
+    handle_result(result, url.0.to_string(), Some(next)).await
 }
 
 #[utoipa::path(put, path = "/v0/events", responses((status = 202, body = ResponseBody<Vec<Event>>)))]
-pub async fn update_events(pool: State<Pool>, events: Events) -> EventsResponse {
+pub async fn update_events(pool: State<Pool>, url: OriginalUri, events: Events) -> EventsResponse {
     let connection = pool.get().await.unwrap();
 
     let result = connection.interact(|cursor| {
@@ -135,11 +143,11 @@ pub async fn update_events(pool: State<Pool>, events: Events) -> EventsResponse 
         responses.into_iter().collect()
     });
 
-    handle_result(result).await
+    handle_result(result, url.0.to_string(), None).await
 }
 
 #[utoipa::path(delete, path = "/v0/events", responses((status = 202, body = ResponseBody<Vec<Event>>)))]
-pub async fn delete_events(pool: State<Pool>, events: Events) -> EventsResponse {
+pub async fn delete_events(pool: State<Pool>, url: OriginalUri, events: Events) -> EventsResponse {
     let connection = pool.get().await.unwrap();
     let ids = events.0.iter().map(|x| x.created_at).collect::<Vec<DateTime<Utc>>>();
 
@@ -148,16 +156,16 @@ pub async fn delete_events(pool: State<Pool>, events: Events) -> EventsResponse 
             .get_results::<Event>(cursor)
     );
 
-    handle_result(result).await
+    handle_result(result, url.0.to_string(), None).await
 }
 
-async fn handle_result<T>(result: T) -> EventsResponse
+async fn handle_result<T>(result: T, this: String, next: Option<String>) -> EventsResponse
 where
     T: Future<Output = Result<Result<Vec<Event>, Error>, InteractError>>,
 {
     match result.await.unwrap() {
         Ok(data) => {
-            let res = ResponseBody::ResponseOk { data, links: "links".to_string() };
+            let res = ResponseBody::ResponseOk { data, links: Links { this, next } };
             (StatusCode::ACCEPTED, Json(res))
         }
         Err(err) => {
